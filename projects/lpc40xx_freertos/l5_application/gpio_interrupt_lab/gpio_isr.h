@@ -1,7 +1,11 @@
 // @file gpio_isr.h
 #pragma once
-#include "lpc_peripherals.h"
+
+#include <stdbool.h>
 #include <stdio.h>
+
+#include "lpc40xx.h"
+#include "lpc_peripherals.h"
 
 typedef enum {
   GPIO_INTR__FALLING_EDGE,
