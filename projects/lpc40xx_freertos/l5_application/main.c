@@ -9,7 +9,12 @@
 int main(void) {
 
   puts("Starting RTOS");
-  vTaskStartScheduler(); // This function never returns unless RTOS scheduler runs out of memory and fails
+
+  ssp2_lab__init(24);
+
+  while (1)
+    delay__ms(100);
+  // vTaskStartScheduler(); // This function never returns unless RTOS scheduler runs out of memory and fails
 
   return 0;
 }
