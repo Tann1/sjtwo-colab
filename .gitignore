@@ -8,4 +8,5 @@ _build_*
 #python venv
 /bin
 /lib
+/share
 pyvenv.cfg
