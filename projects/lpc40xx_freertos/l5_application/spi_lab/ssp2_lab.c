@@ -3,6 +3,7 @@
 void ssp2_lab__init(uint32_t max_clock_mhz) {
   // Refer to LPC User Manual and set up the register bits correctly
   // a) Power on Peripheral
+  LPC_SC->PCONP |= SSP2_POWER;
   // b) Setup control register CR0 and CR1
   // c) Setup prescalar register to be <= max_clock_mhz
 }
