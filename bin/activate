@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/home/tanishq/sjtwo-c-spring2022"
+VIRTUAL_ENV="/home/tanishq/sjtwo-c"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
@@ -54,8 +54,8 @@ fi
 
 if [ -z "${VIRTUAL_ENV_DISABLE_PROMPT:-}" ] ; then
     _OLD_VIRTUAL_PS1="${PS1:-}"
-    if [ "x(sjtwo-c-spring2022) " != x ] ; then
-	PS1="(sjtwo-c-spring2022) ${PS1:-}"
+    if [ "x(sjtwo-c) " != x ] ; then
+	PS1="(sjtwo-c) ${PS1:-}"
     else
     if [ "`basename \"$VIRTUAL_ENV\"`" = "__" ] ; then
         # special case for Aspen magic directories

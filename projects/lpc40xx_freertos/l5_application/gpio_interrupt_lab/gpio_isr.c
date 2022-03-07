@@ -46,6 +46,7 @@ static uint32_t get_respective_pin() {
     if (LPC_GPIOINT->IO0IntStatR & (1U << bit))
       return bit;
   }
+  return 0;
 }
 
 static void clear_pin_interrupt(uint8_t pin_that_generated_interrupt) {

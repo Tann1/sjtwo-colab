@@ -1,4 +1,4 @@
-#!/home/tanishq/sjtwo-c-spring2022/bin/python3
+#!/home/tanishq/sjtwo-c/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys
