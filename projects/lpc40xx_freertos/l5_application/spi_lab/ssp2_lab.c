@@ -23,9 +23,10 @@ uint8_t ssp2_lab__exchange_byte(uint8_t data_out) {
 
   do {
     SSP_STATUS.reg = LPC_SSP2->SR;
+    // fprintf(stderr, "Busy exchaning. . .\n");
   } while (SSP_STATUS.BSY); // wait while SSP is transfering data still
 
-  return LPC_SSP2->DR & (0xFF);
+  return (uint8_t)(LPC_SSP2->DR & 0xff);
 }
 
 void init__ssp_cr0() {
