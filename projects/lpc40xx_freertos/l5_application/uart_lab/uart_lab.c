@@ -52,7 +52,7 @@ static void your_receive_interrupt(void) {
     return;
 
   // TODO: Based on IIR status, read the LSR register to confirm if there is data to be read
-  if (!(((interrupt_uart->IIR >> 1) & 0b111) == 0x2)) // if it's not a recieve interrupt
+  if (((interrupt_uart->IIR >> 1) & 0b111) != 0x2) // if it's not a recieve interrupt
     return;
   // TODO: Based on LSR status, read the RBR register and input the data to the RX Queue
   if (!(interrupt_uart->LSR & 0b1)) // if data isn't actually ready
