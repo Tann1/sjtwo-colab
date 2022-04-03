@@ -2,5 +2,9 @@
     "C_Cpp.errorSquiggles": "Disabled",
     "cSpell.words": [
         "PCONP"
-    ]
+    ],
+    "files.associations": {
+        "queue.h": "c",
+        "acceleration.h": "c"
+    }
 }

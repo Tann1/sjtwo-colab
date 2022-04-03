@@ -1,86 +1,61 @@
+#include <math.h>
 #include <stdio.h>
 
 #include "FreeRTOS.h"
 #include "clock.h"
-#include "gpio.h"
 #include "periodic_scheduler.h"
-#include "semphr.h"
+#include "queue.h"
 #include "task.h"
 
-#include "uart_lab.h"
+#include "acceleration.h"
+#include "ff.h"
 
-void uart_read_task(void *p) {
-  char get_char;
+#define SAMPLE_SIZE 100
+
+QueueHandle_t sensor_queue;
+
+float magnitude(acceleration__axis_data_s data) {
+  uint32_t x = pow(data.x, 2);
+  uint32_t y = pow(data.y, 2);
+  uint32_t z = pow(data.z, 2);
+
+  return pow(x + y + z, 0.5);
+}
+
+void producer(void *p) {
+  uint16_t count = 0;
+  float sum = 0;
+  float avg = 0;
   while (1) {
-    // TODO: Use uart_lab__polled_get() function and printf the received value
-    uart_lab__get_char_from_queue(&get_char, 500);
-    // uart_lab__polled_get(UART_3, &get_char);
-    fprintf(stderr, "%c\n", get_char);
-    // vTaskDelay(500);
+    sum += magnitude(acceleration__get_data());
+    count++;
+    if (count == SAMPLE_SIZE) {
+      avg = sum / SAMPLE_SIZE;
+      xQueueSend(sensor_queue, &avg, 0);
+      sum = 0;   // reset sum
+      count = 0; // reset count
+    }
+    vTaskDelay(1);
   }
 }
 
-void uart_write_task(void *p) {
+void consumer(void *p) {
+  float data;
   while (1) {
-    // TODO: Use uart_lab__polled_put() function and send a value
-    uart_lab__polled_put(UART_3, 'c');
-    vTaskDelay(500);
-  }
-}
-void board_1_sender_task(void *p) {
-  char number_as_string[16] = {0};
-
-  while (true) {
-    const int number = rand();
-    sprintf(number_as_string, "%i", number);
-
-    // Send one char at a time to the other board including terminating NULL char
-    for (int i = 0; i <= strlen(number_as_string); i++) {
-      uart_lab__polled_put(UART_3, number_as_string[i]);
-      printf("Sent: %c\n", number_as_string[i]);
-    }
-
-    printf("Sent: %i over UART to the other board\n", number);
-    vTaskDelay(3000);
-  }
-}
-
-void board_2_receiver_task(void *p) {
-  char number_as_string[16] = {0};
-  int counter = 0;
-
-  while (true) {
-    char byte = 0;
-    uart_lab__get_char_from_queue(&byte, portMAX_DELAY);
-    printf("Received: %c\n", byte);
-
-    // This is the last char, so print the number
-    if ('\0' == byte) {
-      number_as_string[counter] = '\0';
-      counter = 0;
-      printf("Received this number from the other board: %s\n", number_as_string);
-    }
-    // We have not yet received the NULL '\0' char, so buffer the data
-    else {
-      // TODO: Store data to number_as_string[] array one char at a time
-      // Hint: Use counter as an index, and increment it as long as we do not reach max value of 16
-      if (counter != 16)
-        number_as_string[counter++] = byte;
+    if (xQueueReceive(sensor_queue, &data, portMAX_DELAY)) {
+      fprintf(stderr, "Received avg: %.2f\n", (double)data);
     }
   }
 }
 
 int main(void) {
 
-  puts("Starting RTOS");
+  sensor_queue = xQueueCreate(1, sizeof(float));
 
-  uart_lab__init(UART_3, clock__get_peripheral_clock_hz(), 38400);
-  uart__enable_receive_interrupt(UART_3);
-  gpio__construct_with_function(GPIO__PORT_0, 0, GPIO__FUNCTION_2); // u3 txd
-  gpio__construct_with_function(GPIO__PORT_0, 1, GPIO__FUNCTION_2); // u3 rxd
+  acceleration__init();
 
-  xTaskCreate(board_1_sender_task, "send data", 512, NULL, PRIORITY_LOW, NULL);
-  xTaskCreate(board_2_receiver_task, "recieve data", 512, NULL, PRIORITY_LOW, NULL);
+  xTaskCreate(producer, "producer", 512, NULL, PRIORITY_MEDIUM, NULL);
+  xTaskCreate(consumer, "consumer", 512, NULL, PRIORITY_MEDIUM, NULL);
 
   vTaskStartScheduler(); // This function never returns unless RTOS scheduler runs out of memory and fails
 
