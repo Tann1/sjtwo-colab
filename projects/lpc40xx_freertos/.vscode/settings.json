@@ -5,6 +5,7 @@
     ],
     "files.associations": {
         "queue.h": "c",
-        "acceleration.h": "c"
+        "acceleration.h": "c",
+        "periodic_scheduler.h": "c"
     }
 }
