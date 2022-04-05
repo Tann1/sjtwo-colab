@@ -4,6 +4,7 @@
 
 #include "FreeRTOS.h"
 #include "clock.h"
+#include "event_groups.h"
 #include "periodic_scheduler.h"
 #include "queue.h"
 #include "task.h"
@@ -12,8 +13,11 @@
 #include "ff.h"
 
 #define SAMPLE_SIZE 100
+#define BIT_1 (1U << 1)
+#define BIT_2 (1U << 2)
 
 QueueHandle_t sensor_queue;
+EventGroupHandle_t group;
 
 float magnitude(acceleration__axis_data_s data) {
   uint32_t x = pow(data.x, 2);
@@ -33,6 +37,7 @@ void producer(void *p) {
     if (count == SAMPLE_SIZE) {
       avg = sum / SAMPLE_SIZE;
       xQueueSend(sensor_queue, &avg, 0);
+      xEventGroupSetBits(group, BIT_1);
       sum = 0;   // reset sum
       count = 0; // reset count
     }
@@ -52,6 +57,7 @@ void consumer(void *p) {
     for (uint8_t sample_idx = 0; sample_idx < 10; ++sample_idx) { // accumlate the samples before writing to file
       if (xQueueReceive(sensor_queue, &data, portMAX_DELAY)) {
         // fprintf(stderr, "Received avg: %.2f\n", (double)data);
+        xEventGroupSetBits(group, BIT_2);
         store_data[sample_idx] = data;
       }
     } // end of for
@@ -73,14 +79,37 @@ void consumer(void *p) {
   } // end of while
 }
 
+void watchdog_task(void *params) {
+  EventBits_t bits;
+  while (1) {
+    // ...
+    // vTaskDelay(200);
+    // We either should vTaskDelay, but for better robustness, we should
+    // block on xEventGroupWaitBits() for slightly more than 100ms because
+    // of the expected production rate of the producer() task and its check-in
+    bits = xEventGroupWaitBits(group, BIT_1 | BIT_2, pdTRUE, pdFALSE, 200);
+    if ((bits & (BIT_1 | BIT_2)) == (BIT_1 | BIT_2)) {
+      fprintf(stderr, "Both task checked in.\n");
+    } else if (bits & BIT_1) {
+      fprintf(stderr, "Producer checked in only.\n");
+    } else if (bits & BIT_2) {
+      fprintf(stderr, "Consumer checked in only.\n");
+    } else {
+      fprintf(stderr, "Neither tasks checked in.\n");
+    }
+  }
+}
+
 int main(void) {
 
   sensor_queue = xQueueCreate(1, sizeof(float));
+  group = xEventGroupCreate();
 
   acceleration__init();
 
   xTaskCreate(producer, "producer", 512, NULL, PRIORITY_MEDIUM, NULL);
   xTaskCreate(consumer, "consumer", 1024, NULL, PRIORITY_MEDIUM, NULL);
+  xTaskCreate(watchdog_task, "watchdog", 512, NULL, PRIORITY_HIGH, NULL);
 
   vTaskStartScheduler(); // This function never returns unless RTOS scheduler runs out of memory and fails
 
