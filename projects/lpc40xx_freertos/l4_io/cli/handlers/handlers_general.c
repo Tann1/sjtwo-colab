@@ -85,3 +85,32 @@ static void cli__task_list_print(sl_string_s output_string, app_cli__print_strin
   cli_output(unused_cli_param, "configUSE_TRACE_FACILITY macro at FreeRTOSConfig.h must be non-zero\n");
 #endif
 }
+
+app_cli_status_e cli__task_control(app_cli__argument_t argument, sl_string_s user_input_minus_command_name,
+                                   app_cli__print_string_function cli_output) {
+  sl_string_s s = user_input_minus_command_name;
+  cli_output(NULL, "taskcontrol called\n");
+  if (sl_string__begins_with_ignore_case(s, "suspend")) {
+    sl_string__erase_first_word(s, ' '); // remove suspend
+    TaskHandle_t task_handle = xTaskGetHandle(sl_string__c_str(s));
+    if (task_handle == NULL) {
+      sl_string__insert_at(s, 0, "Could not find a task with name: ");
+      cli_output(NULL, sl_string__c_str(s));
+    } else {
+      vTaskSuspend(task_handle);
+    }
+  } else if (sl_string__begins_with_ignore_case(s, "resume")) {
+    sl_string__erase_first_word(s, ' ');
+    TaskHandle_t task_handle = xTaskGetHandle(sl_string__c_str(s));
+    if (task_handle == NULL) {
+      sl_string__insert_at(s, 0, "Could not find a task with name: ");
+      cli_output(NULL, sl_string__c_str(s));
+    } else {
+      vTaskResume(task_handle);
+    }
+  } else {
+    cli_output(NULL, "Did you mean to say suspend or resume?\n");
+  }
+
+  return APP_CLI_STATUS__SUCCESS;
+}
