@@ -46,6 +46,8 @@ typedef struct {
   size_t number_of_bytes_to_transfer;
 } i2c_s;
 
+volatile uint8_t memory_idx = 0;
+
 /// Instances of structs for each I2C peripheral
 static i2c_s i2c_structs[] = {
     {LPC_I2C0, "i2c0"},
@@ -276,6 +278,18 @@ static bool i2c__handle_state_machine(i2c_s *i2c) {
     I2C__STATE_MR_SLAVE_READ_NACK = 0x48,
     I2C__STATE_MR_SLAVE_ACK_SENT = 0x50,
     I2C__STATE_MR_SLAVE_NACK_SENT = 0x58,
+
+    // Slave Receiver States (SR):
+    I2C__STATE_SR_SLAVE_ADDR_ACK = 0X60,
+    I2C__STATE_SR_SLAVE_ADDR_NACK = 0X68,
+    I2C__STATE_SR_SLAVE_DATA_ACK = 0X80,
+    I2C__STATE_SR_SLAVE_DATA_NACK = 0X88,
+
+    // Slave Transmitter States (ST):
+    I2C__STATE_ST_SLAVE_ADDR_ACK = 0XA8,
+    I2C__STATE_ST_SLAVE_ADDR_NACK = 0XB0,
+    I2C__STATE_ST_SLAVE_DATA_ACK = 0XB8,
+    I2C__STATE_ST_SLAVE_DATA_NACK = 0XC0
   };
 
   bool stop_sent = false;
@@ -383,6 +397,48 @@ static bool i2c__handle_state_machine(i2c_s *i2c) {
     stop_sent = true;
     i2c->error_code = lpc_i2c->STAT;
     break;
+  case I2C__STATE_SR_SLAVE_ADDR_ACK: // slave reciever cases
+    i2c__set_ack_flag(lpc_i2c);
+    i2c__clear_si_flag_for_hw_to_take_next_action(lpc_i2c);
+    // memory_idx = 0;
+    break;
+  case I2C__STATE_SR_SLAVE_ADDR_NACK:
+    i2c__set_nack_flag(lpc_i2c);
+    i2c__clear_si_flag_for_hw_to_take_next_action(lpc_i2c);
+    // memory_idx = 0;
+    break;
+  case I2C__STATE_SR_SLAVE_DATA_ACK:
+    if (i2c_slave_callback__write_memory(memory_idx, lpc_i2c->DAT))
+      memory_idx++;
+    i2c__set_ack_flag(lpc_i2c);
+    i2c__clear_si_flag_for_hw_to_take_next_action(lpc_i2c);
+    break;
+  case I2C__STATE_SR_SLAVE_DATA_NACK: // end of slave reciever cases
+    i2c__set_ack_flag(lpc_i2c);
+    i2c__clear_si_flag_for_hw_to_take_next_action(lpc_i2c);
+    break;
+  case I2C__STATE_ST_SLAVE_ADDR_ACK: // start of slave transmitter cases
+    if (i2c_slave_callback__read_memory(memory_idx, (uint8_t *)lpc_i2c->DAT))
+      memory_idx++;
+    i2c__set_ack_flag(lpc_i2c);
+    i2c__clear_si_flag_for_hw_to_take_next_action(lpc_i2c);
+    break;
+  case I2C__STATE_ST_SLAVE_ADDR_NACK:
+    if (i2c_slave_callback__read_memory(memory_idx, (uint8_t *)lpc_i2c->DAT))
+      memory_idx++;
+    i2c__set_ack_flag(lpc_i2c);
+    i2c__set_start_flag(lpc_i2c);
+    i2c__clear_si_flag_for_hw_to_take_next_action(lpc_i2c);
+    break;
+  case I2C__STATE_ST_SLAVE_DATA_ACK:
+    if (i2c_slave_callback__read_memory(memory_idx, (uint8_t *)lpc_i2c->DAT))
+      memory_idx++;
+    i2c__set_ack_flag(lpc_i2c);
+    i2c__clear_si_flag_for_hw_to_take_next_action(lpc_i2c);
+    break;
+  case I2C__STATE_ST_SLAVE_DATA_NACK:
+    i2c__set_ack_flag(lpc_i2c);
+    i2c__clear_si_flag_for_hw_to_take_next_action(lpc_i2c); // end of slave transmitter logic
 
   case I2C__STATE_MT_SLAVE_ADDR_NACK: // no break
   case I2C__STATE_MT_SLAVE_DATA_NACK: // no break
