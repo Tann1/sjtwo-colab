@@ -18,6 +18,7 @@ int main(void) {
   songname_q = xQueueCreate(1, sizeof(songname_s));
   xTaskCreate(mp3_reader_task, "mp3 reader", 1024, NULL, PRIORITY_MEDIUM, &reader_handle);
   vTaskStartScheduler(); // This function never returns unless RTOS scheduler runs out of memory and fails
+  // oh another one
 
   return 0;
 }
