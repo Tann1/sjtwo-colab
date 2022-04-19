@@ -3,25 +3,20 @@
 #include <string.h>
 
 #include "FreeRTOS.h"
-#include "clock.h"
-#include "event_groups.h"
-#include "i2c_slave.h"
+#include "mp3_tasks.h"
 #include "periodic_scheduler.h"
-#include "queue.h"
 #include "sj2_cli.h"
+#include "struct_definition.h"
 #include "task.h"
 
-void simple_task(void *p) {
-  while (1) {
-    vTaskDelay(100);
-  }
-}
+QueueHandle_t songname_q;
+TaskHandle_t reader_handle;
 
 int main(void) {
-  TaskHandle_t simple_handle;
   sj2_cli__init();
-  i2c2__slave_init(0x96);
-  xTaskCreate(simple_task, "simple_task", 256, NULL, PRIORITY_LOW, &simple_handle);
+
+  songname_q = xQueueCreate(1, sizeof(songname_s));
+  xTaskCreate(mp3_reader_task, "mp3 reader", 1024, NULL, PRIORITY_MEDIUM, &reader_handle);
   vTaskStartScheduler(); // This function never returns unless RTOS scheduler runs out of memory and fails
 
   return 0;
