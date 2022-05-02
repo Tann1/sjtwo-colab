@@ -4,27 +4,25 @@
 
 #include "FreeRTOS.h"
 #include "clock.h"
+#include "event_groups.h"
+#include "lcd_driver.h"
 #include "periodic_scheduler.h"
 #include "queue.h"
 #include "sj2_cli.h"
 #include "task.h"
 
-void simple_task(void *p) {
+static void task_one(void *task_parameter) {
   while (1) {
-    // fprintf(stderr, "hey you (:\n");
+    lcd__send_char('a');
     vTaskDelay(100);
   }
 }
 
 int main(void) {
+  lcd__init(9600);
 
-  TaskHandle_t simple_handle;
+  xTaskCreate(task_one, "lcd transmitter", 512, NULL, PRIORITY_LOW, NULL);
 
-  sj2_cli__init();
-
-  xTaskCreate(simple_task, "simple_task", 256, NULL, PRIORITY_LOW, &simple_handle);
-
-  vTaskStartScheduler(); // This function never returns unless RTOS scheduler runs out of memory and fails
-
+  vTaskStartScheduler();
   return 0;
 }
