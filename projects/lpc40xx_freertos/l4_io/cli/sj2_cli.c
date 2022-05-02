@@ -42,8 +42,11 @@ void sj2_cli__init(void) {
                                             .help_message_for_command = "taskcontrol <action> <name of the task>\n",
                                             .app_cli_handler = cli__task_control};
 
+
+=======
   static app_cli__command_s play_mp3 = {
       .command_name = "play", .help_message_for_command = "play <song name>.mp3\n", .app_cli_handler = cli__mp3_play};
+
 
   // Add your CLI commands in descending sorted order to make them appear in sorted order
   app_cli__add_command_handler(&sj2_cli_struct, &uart3_transmit);

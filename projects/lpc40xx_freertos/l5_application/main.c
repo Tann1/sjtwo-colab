@@ -3,22 +3,26 @@
 #include <string.h>
 
 #include "FreeRTOS.h"
-#include "mp3_tasks.h"
+#include "clock.h"
+#include "event_groups.h"
+#include "lcd_driver.h"
 #include "periodic_scheduler.h"
+#include "queue.h"
 #include "sj2_cli.h"
-#include "struct_definition.h"
 #include "task.h"
 
-QueueHandle_t songname_q;
-TaskHandle_t reader_handle;
+static void task_one(void *task_parameter) {
+  while (1) {
+    lcd__send_char('a');
+    vTaskDelay(100);
+  }
+}
 
 int main(void) {
-  sj2_cli__init();
+  lcd__init(9600);
 
-  songname_q = xQueueCreate(1, sizeof(songname_s));
-  xTaskCreate(mp3_reader_task, "mp3 reader", 1024, NULL, PRIORITY_MEDIUM, &reader_handle);
-  vTaskStartScheduler(); // This function never returns unless RTOS scheduler runs out of memory and fails
-  // oh another one
+  xTaskCreate(task_one, "lcd transmitter", 512, NULL, PRIORITY_LOW, NULL);
 
+  vTaskStartScheduler();
   return 0;
 }
