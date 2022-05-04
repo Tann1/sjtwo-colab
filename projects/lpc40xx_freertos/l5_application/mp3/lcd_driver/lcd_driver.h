@@ -7,3 +7,4 @@
 
 void lcd__init(uint32_t baud_rate);
 void lcd__send_char(char output_byte);
+void lcd__send_msg(char *message);
