@@ -13,7 +13,7 @@
 
 static void task_one(void *task_parameter) {
   while (1) {
-    lcd__send_char('a');
+    lcd__send_msg("Hello World by me.\n");
     vTaskDelay(100);
   }
 }
