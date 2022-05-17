@@ -11,6 +11,7 @@ typedef enum {
   PWM1__2_1 = 1, ///< Controls P2.1
   PWM1__2_2 = 2, ///< Controls P2.2
   PWM1__2_4 = 4, ///< Controls P2.4
+  PWM1__2_3 = 3,
   PWM1__2_5 = 5, ///< Controls P2.5
 } pwm1_channel_e;
 

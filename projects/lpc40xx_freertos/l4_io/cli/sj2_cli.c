@@ -37,25 +37,17 @@ void sj2_cli__init(void) {
                                              "Outputs list of RTOS tasks, CPU and stack usage.\n"
                                              "tasklist <time>' will display CPU utilization within this time window.",
                                          .app_cli_handler = cli__task_list};
-
-  static app_cli__command_s task_control = {.command_name = "taskcontrol",
-                                            .help_message_for_command = "taskcontrol <action> <name of the task>\n",
-                                            .app_cli_handler = cli__task_control};
-
-
-=======
-  static app_cli__command_s play_mp3 = {
-      .command_name = "play", .help_message_for_command = "play <song name>.mp3\n", .app_cli_handler = cli__mp3_play};
-
-
+  static app_cli__command_s your_cli_struct = {
+      .command_name = "taskcontrol", .help_message_for_command = "help message", .app_cli_handler = cli__task_control};
+  static app_cli__command_s play_song = {
+      .command_name = "play", .help_message_for_command = "<songname>.mp3", .app_cli_handler = cli__mp3_play};
   // Add your CLI commands in descending sorted order to make them appear in sorted order
   app_cli__add_command_handler(&sj2_cli_struct, &uart3_transmit);
-  app_cli__add_command_handler(&sj2_cli_struct, &task_control);
   app_cli__add_command_handler(&sj2_cli_struct, &task_list);
-  app_cli__add_command_handler(&sj2_cli_struct, &play_mp3);
   app_cli__add_command_handler(&sj2_cli_struct, &i2c);
   app_cli__add_command_handler(&sj2_cli_struct, &crash);
-
+  app_cli__add_command_handler(&sj2_cli_struct, &your_cli_struct);
+  app_cli__add_command_handler(&sj2_cli_struct, &play_song);
   // In case other tasks are hogging the CPU, it would be useful to run the CLI
   // at high priority to at least be able to see what is going on
   static StackType_t task_stack[2048 / sizeof(StackType_t)];

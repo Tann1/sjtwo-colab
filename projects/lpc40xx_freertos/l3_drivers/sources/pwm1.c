@@ -43,6 +43,9 @@ void pwm1__set_duty_cycle(pwm1_channel_e pwm1_channel, float duty_cycle_in_perce
   case PWM1__2_2:
     LPC_PWM1->MR3 = match_reg_value;
     break;
+  case PWM1__2_3:
+    LPC_PWM1->MR4 = match_reg_value;
+    break;
   case PWM1__2_4:
     LPC_PWM1->MR5 = match_reg_value;
     break;

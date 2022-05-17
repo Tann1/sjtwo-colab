@@ -8,7 +8,7 @@ static LPC_GPIO_TypeDef *gpio__get_struct(gpio_s gpio) { return (LPC_GPIO_TypeDe
 
 static uint32_t gpio__get_pin_mask(gpio_s gpio) { return (UINT32_C(1) << gpio.pin_number); }
 
-static volatile uint32_t *gpio__get_iocon(gpio_s gpio) {
+volatile uint32_t *gpio__get_iocon(gpio_s gpio) {
   volatile uint32_t *IOCON_base = (volatile uint32_t *)LPC_IOCON;
 
   // Each port is offset by thirty-two 32-bit registers

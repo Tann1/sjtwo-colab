@@ -1,8 +1,9 @@
 #include "cli_handlers.h"
 
 #include "FreeRTOS.h"
+#include "queue.h"
+#include "stdio.h"
 #include "task.h"
-
 #include "uart_printf.h"
 
 static void cli__task_list_print(sl_string_s user_input_minus_command_name, app_cli__print_string_function cli_output);
@@ -88,29 +89,57 @@ static void cli__task_list_print(sl_string_s output_string, app_cli__print_strin
 
 app_cli_status_e cli__task_control(app_cli__argument_t argument, sl_string_s user_input_minus_command_name,
                                    app_cli__print_string_function cli_output) {
+
   sl_string_s s = user_input_minus_command_name;
-  cli_output(NULL, "taskcontrol called\n");
+
   if (sl_string__begins_with_ignore_case(s, "suspend")) {
-    sl_string__erase_first_word(s, ' '); // remove suspend
-    TaskHandle_t task_handle = xTaskGetHandle(sl_string__c_str(s));
-    if (task_handle == NULL) {
-      sl_string__insert_at(s, 0, "Could not find a task with name: ");
-      cli_output(NULL, sl_string__c_str(s));
+    // erase taskcontrol suspend and take task  as variable s
+    sl_string__erase_first_word(user_input_minus_command_name, ' ');
+    sl_string__erase_first_word(user_input_minus_command_name, ' ');
+    char name[16];
+    sl_string__scanf(s, "%16s", name);
+    printf("Suspend task %s\n", name);
+
+    TaskHandle_t task_handle = xTaskGetHandle(name);
+    if (NULL == task_handle) {
+
+      sl_string__insert_at(s, 0, "Could not find a task with name:");
+      cli_output(NULL, name);
     } else {
       vTaskSuspend(task_handle);
     }
+
   } else if (sl_string__begins_with_ignore_case(s, "resume")) {
-    sl_string__erase_first_word(s, ' ');
-    TaskHandle_t task_handle = xTaskGetHandle(sl_string__c_str(s));
-    if (task_handle == NULL) {
-      sl_string__insert_at(s, 0, "Could not find a task with name: ");
-      cli_output(NULL, sl_string__c_str(s));
+    // erase taskcontrol resume and take task as variable s
+    sl_string__erase_first_word(user_input_minus_command_name, ' ');
+    sl_string__erase_first_word(user_input_minus_command_name, ' ');
+
+    char name[16];
+    sl_string__scanf(s, "%16s", name);
+    printf("Resume task %s\n", name);
+
+    TaskHandle_t task_handle = xTaskGetHandle(name);
+    if (NULL == task_handle) {
+
+      sl_string__insert_at(s, 0, "Could not find a task with name:");
+      cli_output(NULL, name);
     } else {
       vTaskResume(task_handle);
     }
+
   } else {
     cli_output(NULL, "Did you mean to say suspend or resume?\n");
   }
+
+  return APP_CLI_STATUS__SUCCESS;
+}
+
+extern QueueHandle_t songname_queue;
+app_cli_status_e cli__mp3_play(app_cli__argument_t argument, sl_string_s user_input_minus_command_name,
+                               app_cli__print_string_function cli_output) {
+  // user_input_minus_command_name is actually a 'char *' pointer type
+  // We tell the Queue to copy 32 bytes of songname from this location
+  xQueueSend(songname_queue, user_input_minus_command_name.cstring, portMAX_DELAY);
 
   return APP_CLI_STATUS__SUCCESS;
 }

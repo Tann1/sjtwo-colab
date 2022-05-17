@@ -1,6 +1,6 @@
-#include "adc.h"
 #include <stdint.h>
-#include <stdio.h>
+
+#include "adc.h"
 
 #include "clock.h"
 #include "lpc40xx.h"
@@ -52,30 +52,12 @@ uint16_t adc__get_adc_value(adc_channel_e channel_num) {
   return result;
 }
 
-void adc__enable_burst_mode(void) {
-  LPC_ADC->CR &= ~(7U << 24); // must set START[26:24] = 0b000 in order for brust mode to work properly
-  LPC_ADC->CR |= (1U << 5);   // read the manual future me
-  LPC_ADC->CR |= (1U << 16);  // enable brust mode
+void adc__enable_burst_mode() {
+  LPC_ADC->CR |= (1 << 16);
+  LPC_ADC->CR |= (1 << 2);
 }
 
-uint16_t adc__get_channel_reading_with_burst_mode(adc_channel_e channel_num) {
-  uint16_t result = 0;
-  const uint16_t twelve_bits = 0x0FFF;
-  const uint32_t adc_conversion_complete = (1U << 31);
-
-  if ((ADC__CHANNEL_5 == channel_num)) {
-    // LPC_ADC->CR &= ~(channel_masks | start_conversion_mask);
-    // Set the channel number and start the conversion now
-    // LPC_ADC->CR |= (1 << channel_num);
-
-    // __IO uint32_t respective_channel = LPC_ADC->DR[channel_num];
-    while (!(LPC_ADC->DR[channel_num] & adc_conversion_complete)) { // Wait till conversion is complete
-      // respective_channel = LPC_ADC->DR[channel_num];
-      fprintf(stderr, "stuck converting. . .\n");
-    }
-    // fprintf(stderr, "channel 5 value: 0x%lx\n", respective_channel);
-    result = (LPC_ADC->DR[channel_num] >> 4) & twelve_bits; // 12bits - B15:B4
-  }
-
-  return result;
+uint16_t adc__get_channel_reading_with_burst_mode(uint8_t channel_number) {
+  uint16_t x = (LPC_ADC->DR[channel_number] >> 4 & 0x00000FFF);
+  return x;
 }

@@ -30,7 +30,7 @@ static void isr_hard_fault(void);
  * Alternative is to use '__attribute__((used))' attribute prior to isr_hard_fault_handler()
  */
 void isr_hard_fault_handler(unsigned long *hardfault_args);
-
+void gpio_interrupt(void);
 __attribute__((section(".interrupt_vector_table"))) const function__void_f interrupt_vector_table[] = {
     /**
      * Core interrupt vectors

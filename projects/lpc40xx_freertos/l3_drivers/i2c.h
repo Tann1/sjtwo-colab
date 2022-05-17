@@ -4,7 +4,6 @@
 #include <stdint.h>
 
 #include "FreeRTOS.h"
-#include "i2c_slave.h"
 #include "semphr.h"
 
 /**
