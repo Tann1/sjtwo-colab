@@ -12,3 +12,6 @@ void write_register(uint8_t register_ad, uint8_t first_half, uint8_t second_half
 bool Dreq(void);
 
 void send_data(char data);
+
+void cs_data(void);
+void ds_data(void);

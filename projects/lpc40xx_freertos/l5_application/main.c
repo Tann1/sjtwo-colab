@@ -41,7 +41,6 @@ volatile bool finished_playing = false;
 volatile size_t number_of_songs;
 volatile size_t song_list_index = 0;
 
-
 extern volatile bool previous_song_index;
 extern volatile bool pause_button;
 extern volatile bool menu_button;
@@ -84,12 +83,14 @@ static void mp3_reader_task(void *parameter) {
 }
 
 static void transfer_mp3(song_data_t songdata) {
+  cs_data();
   for (size_t index = 0; index < sizeof(song_data_t); index++) {
     while (!(Dreq())) {
       vTaskDelay(1);
     }
     send_data(songdata[index]);
   }
+  ds_data();
 }
 static void mp3_player_task(void *parameter) {
   song_data_t songdata;
@@ -125,7 +126,7 @@ int main(void) {
 
   xTaskCreate(mp3_player_task, "Player", 4096 / sizeof(void *), NULL, PRIORITY_HIGH, &mp3_player_handle);
   xTaskCreate(mp3_reader_task, "Reader", 4096 / sizeof(void *), NULL, PRIORITY_LOW, NULL);
-  xTaskCreate(mp3_control_task, "Buttons", 4096 / sizeof(void *), NULL, PRIORITY_HIGH, NULL);
+  // xTaskCreate(mp3_control_task, "Buttons", 4096 / sizeof(void *), NULL, PRIORITY_HIGH, NULL);
 
   vTaskStartScheduler();
 
