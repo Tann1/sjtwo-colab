@@ -41,9 +41,7 @@ volatile bool finished_playing = false;
 volatile size_t number_of_songs;
 volatile size_t song_list_index = 0;
 
-extern volatile size_t current_song;
-extern volatile bool first_song;
-extern volatile bool change_song;
+
 extern volatile bool previous_song_index;
 extern volatile bool pause_button;
 extern volatile bool menu_button;
