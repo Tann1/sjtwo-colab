@@ -89,7 +89,7 @@ void mp3_controls_display(void) {
   size_t row = 0;
   char temp_buffer[COL * 2]; // just adding padding to keep memory safe
   char row_buffer[COL];
-  const char control[3][20] = {"Volume", "Bass", "Treble"};
+  const char control[3][20] = {"Volume :", "Bass :", "Treble :"};
 
   // 3 cuz only have room to show 3 songs on lcd
   while (row < 3) {
@@ -101,6 +101,7 @@ void mp3_controls_display(void) {
 
   setCursor(2, 3);
   writeChar(1);
+  lcd__send_char('U');
   setCursor(9, 3);
   writeChar(2);
   writeChar(4);
