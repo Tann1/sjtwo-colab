@@ -1,180 +1,264 @@
-#include "volume_treble.h"
-#include "mp3.h"
 #include "mp3_buttons.h"
-#include "mp3_decoder.h"
-#include "stdio.h"
+#include "gpio.h"
+#include "gpio_isr.h"
+#include "lpc40xx.h"
+#include "lpc_peripherals.h"
+#include "mp3.h"
+#include "queue.h"
+#include "semphr.h"
+#include "song_list.h"
+#include "volume_treble.h"
+#include <stdio.h>
+#include <task.h>
 
-static double volume_value = 0.0;
-static int bass_value = 0;
-static int treble_value = 0;
-static int previous_rotary_index = 0;
-static int current_volume = 50;
-static int current_bass = 15;
-static int current_treble = 15;
-extern bool currently_playing;
+extern QueueHandle_t mp3_data_transfer_queue;
+extern QueueHandle_t songname_queue;
 
-volatile int volume_menu;
+SemaphoreHandle_t mp3_previous;
+SemaphoreHandle_t mp3_next;
+SemaphoreHandle_t mp3_pause_play;
+SemaphoreHandle_t mp3_control_menu;
+SemaphoreHandle_t mp3_bass_control;
+SemaphoreHandle_t mp3_volume_control;
+SemaphoreHandle_t mp3_treble_control;
+SemaphoreHandle_t song_list_up;
+SemaphoreHandle_t song_list_down;
 
-void volume_control(void) {
-  if (previous_rotary_index == get_rotary_position()) {
-    return;
+bool interrupt = false;
+
+volatile size_t number_of_songs;
+volatile size_t song_index = 0;
+extern TaskHandle_t mp3_player_handle;
+
+volatile size_t current_song = false;
+volatile bool first_song = true;
+volatile bool change_song = false;
+volatile bool previous_song_index = 0;
+volatile bool pause_button = false;
+volatile bool menu_button = false;
+volatile bool currently_playing = false;
+volatile int menu_check = 0;
+
+gpio_s SW1, SW2, SW3, SW4, SW5, ENCA, ENCB, Control_Menu;
+
+int no_of_song() {
+  number_of_songs = song_list__get_item_count();
+  return number_of_songs;
+}
+
+void pause_song_ISR(void) {
+  if (interrupt == false) {
+    interrupt = true;
+    pause_button = !pause_button;
+    xSemaphoreGiveFromISR(mp3_pause_play, NULL);
   }
-  volume_value = get_volume_value();
+}
 
-  uint8_t volume_v = 254 * (1 - ((volume_value * 0.50) + 0.5));
+void pause_song(void) {
+  currently_playing = false;
+  vTaskSuspend(mp3_player_handle);
+}
 
-  write_register(0x0B, volume_v, volume_v);
-  char volume_string[20];
+void play_song(void) {
+  currently_playing = true;
+  vTaskResume(mp3_player_handle);
+}
 
-  if (currently_playing) {
-    sprintf(volume_string, "Volume: %d", current_volume);
-    lcd__send_row("                       ", 2);
-    lcd__send_row(volume_string, 2);
+void play_song_from_home(void) {
+
+  if (first_song) {
+    first_song = false;
   } else {
-    sprintf(volume_string, "1. Volume: %d", current_volume);
-    lcd__send_row("                       ", 0);
-    lcd__send_row(volume_string, 0);
+    change_song = true;
+  }
+  currently_playing = true;
+  song_playing(song_index);
+  xQueueSend(songname_queue, song_list__get_name_for_item(song_index), 0);
+}
+
+void next_song_ISR(void) {
+  if (interrupt == false) {
+    interrupt = true;
+    currently_playing = true;
+    xSemaphoreGiveFromISR(mp3_next, NULL);
   }
 }
 
-double get_volume_value(void) {
-  int get_current_index = get_rotary_position();
+void next_song(void) {
 
-  if (current_volume == 100) {
-    if (get_current_index > previous_rotary_index) {
-      previous_rotary_index = get_current_index;
-      return 1;
-
-    } else {
-      current_volume--;
-    }
+  if (first_song) {
+    first_song = false;
+  } else {
+    change_song = true;
   }
+  if (song_index >= (no_of_song() - 1)) {
+    song_index = 0;
+  } else {
 
-  else if (current_volume == 0) {
-    if (get_current_index > previous_rotary_index) {
-      current_volume++;
-
-    } else {
-      return 0;
-    }
+    song_index = (song_index + 1);
   }
-
-  else {
-    if (get_current_index > previous_rotary_index) {
-      previous_rotary_index = get_current_index;
-      current_volume++;
-    } else {
-      current_volume--;
-    }
-  }
-
-  previous_rotary_index = get_current_index;
-
-  return (current_volume / 100.0);
+  song_playing(song_index);
+  xQueueSend(songname_queue, song_list__get_name_for_item(song_index), 0);
 }
 
-void bass_control(void) {
-  if (previous_rotary_index == get_rotary_position()) {
-    return;
+void previous_song_ISR(void) {
+  if (interrupt == false) {
+    interrupt = true;
+    currently_playing = true;
+    xSemaphoreGiveFromISR(mp3_previous, NULL);
   }
-  bass_value = get_bass_value();
-  uint8_t temp_bass = 0;
-  temp_bass |= (bass_value << 4);
-  temp_bass |= 15 << 0;
-
-  write_register(0x02, 0, temp_bass);
-  char bass_string[20];
-
-  sprintf(bass_string, "2. Bass:%x", bass_value);
-  lcd__send_row("                       ", 1);
-  lcd__send_row(bass_string, 1);
 }
 
-double get_bass_value(void) {
-  int get_current_index = get_rotary_position();
+void previous_song(void) {
 
-  if (current_bass == 15) {
-    if (get_current_index > previous_rotary_index) {
-      previous_rotary_index = get_current_index;
-      return current_bass;
-
-    } else {
-      current_bass--;
-    }
+  if (first_song) {
+    first_song = false;
+  } else {
+    previous_song_index = true;
   }
-
-  else if (current_bass == 0) {
-    if (get_current_index > previous_rotary_index) {
-      current_bass++;
-
-    } else {
-      return 0;
-    }
+  if (song_index == 0) {
+    song_index = (no_of_song() - 1);
+  } else {
+    song_index = (song_index - 1);
   }
-
-  else {
-    if (get_current_index > previous_rotary_index) {
-      previous_rotary_index = get_current_index;
-      current_bass++;
-    } else {
-      current_bass--;
-    }
-  }
-
-  previous_rotary_index = get_current_index;
-
-  return current_bass;
+  song_playing(song_index);
+  xQueueSend(songname_queue, song_list__get_name_for_item(song_index), 0);
 }
 
-void treble_control(void) {
-  if (previous_rotary_index == get_rotary_position()) {
-    return;
+void Control_Menu_Print(void) {
+  if (interrupt == false) {
+    menu_button = !menu_button;
+    interrupt = true;
+    xSemaphoreGiveFromISR(mp3_control_menu, NULL);
   }
-  treble_value = get_treble_value();
-  uint8_t temp_treble = 0;
-  temp_treble |= (treble_value << 4);
-  temp_treble |= 1 << 0;
-
-  write_register(0x02, temp_treble, 0);
-  char treble_string[20];
-
-  sprintf(treble_string, "3. Treble: %d", treble_value);
-  lcd__send_row("                       ", 2);
-  lcd__send_row(treble_string, 2);
 }
 
-double get_treble_value(void) {
-  int get_current_index = get_rotary_position();
-
-  if (current_treble == 15) {
-    if (get_current_index > previous_rotary_index) {
-      previous_rotary_index = get_current_index;
-      return current_treble;
-
-    } else {
-      current_treble--;
-    }
+void left_as_volume() {
+  if (interrupt == false) {
+    interrupt = true;
+    xSemaphoreGiveFromISR(mp3_volume_control, NULL);
   }
-
-  else if (current_treble == 0) {
-    if (get_current_index > previous_rotary_index) {
-      current_treble++;
-
-    } else {
-      return 0;
-    }
-  }
-
-  else {
-    if (get_current_index > previous_rotary_index) {
-      previous_rotary_index = get_current_index;
-      current_treble++;
-    } else {
-      current_treble--;
-    }
-  }
-
-  previous_rotary_index = get_current_index;
-
-  return current_treble;
 }
+
+void right_as_bass() {
+  if (interrupt == false) {
+    interrupt = true;
+    xSemaphoreGiveFromISR(mp3_bass_control, NULL);
+  }
+}
+
+void down_as_treble() {
+  if (interrupt == false) {
+    interrupt = true;
+    xSemaphoreGiveFromISR(mp3_treble_control, NULL);
+  }
+}
+
+void move_up_list_ISR(void) {
+  if (interrupt == false) {
+    interrupt = true;
+    xSemaphoreGiveFromISR(song_list_up, NULL);
+  }
+}
+
+void move_down_list_ISR(void) {
+  if (interrupt == false) {
+    interrupt = true;
+    xSemaphoreGiveFromISR(song_list_down, NULL);
+  }
+}
+
+void move_up_list(void) {
+  currently_playing = false;
+  if (song_index == 0) {
+
+    mp3__init_lcd_display(0);
+  } else if (song_index > 0) {
+    song_index = song_index - 1;
+    int song_size = song_index;
+    mp3__init_lcd_display(song_size);
+  }
+}
+
+void move_down_list(void) {
+  currently_playing = false;
+  if (song_index <= (no_of_song())) {
+    song_index = song_index + 1;
+    int song_size = song_index;
+
+    if (song_size > (no_of_song() - 1)) {
+      song_size = (no_of_song() - 1);
+    }
+    mp3__init_lcd_display(song_size);
+  }
+}
+
+void Enter_control_mode(void) {
+  mp3_controls_display();
+  gpio2__attach_interrupt(4, GPIO_INTR__FALLING_EDGE, left_as_volume);
+  gpio2__attach_interrupt(5, GPIO_INTR__FALLING_EDGE, right_as_bass);
+  gpio2__attach_interrupt(6, GPIO_INTR__FALLING_EDGE, down_as_treble);
+}
+void encoder__init() {
+  buttons();
+  encoder__turn_on_power();
+
+  LPC_QEI->MAXPOS = 1;
+}
+void mp3_pins_init() {
+
+  mp3_previous = xSemaphoreCreateBinary();
+  mp3_next = xSemaphoreCreateBinary();
+  mp3_pause_play = xSemaphoreCreateBinary();
+  mp3_control_menu = xSemaphoreCreateBinary();
+  mp3_volume_control = xSemaphoreCreateBinary();
+  mp3_bass_control = xSemaphoreCreateBinary();
+  mp3_treble_control = xSemaphoreCreateBinary();
+  song_list_up = xSemaphoreCreateBinary();
+  song_list_down = xSemaphoreCreateBinary();
+
+  buttons();
+  regular_menu_interrupts();
+  encoder__turn_on_power();
+}
+void regular_menu_interrupts() {
+  gpio2__attach_interrupt(2, GPIO_INTR__FALLING_EDGE, pause_song_ISR);
+  gpio2__attach_interrupt(1, GPIO_INTR__FALLING_EDGE, move_up_list_ISR);
+  gpio2__attach_interrupt(5, GPIO_INTR__FALLING_EDGE, next_song_ISR);
+  gpio2__attach_interrupt(4, GPIO_INTR__FALLING_EDGE, previous_song_ISR);
+  gpio2__attach_interrupt(6, GPIO_INTR__FALLING_EDGE, move_down_list_ISR);
+
+  gpio2__attach_interrupt(8, GPIO_INTR__FALLING_EDGE, Control_Menu_Print);
+
+  lpc_peripheral__enable_interrupt(LPC_PERIPHERAL__GPIO, gpio2__interrupt_dispatcher, "name");
+}
+
+void buttons(void) {
+
+  // SW1= center
+  SW1 = gpio__construct_with_function(GPIO__PORT_2, 2, GPIO__FUNCITON_0_IO_PIN);
+  gpio__set_as_input(SW1);
+  // SW2= Down
+  SW2 = gpio__construct_with_function(GPIO__PORT_2, 1, GPIO__FUNCITON_0_IO_PIN);
+  gpio__set_as_input(SW2);
+  // SW3= Right
+  SW3 = gpio__construct_with_function(GPIO__PORT_2, 5, GPIO__FUNCITON_0_IO_PIN);
+  gpio__set_as_input(SW3);
+  // SW4= Up
+  SW4 = gpio__construct_with_function(GPIO__PORT_2, 6, GPIO__FUNCITON_0_IO_PIN);
+  gpio__set_as_input(SW4);
+  // SW5= Left
+  SW5 = gpio__construct_with_function(GPIO__PORT_2, 4, GPIO__FUNCITON_0_IO_PIN);
+  gpio__set_as_input(SW5);
+
+  Control_Menu = gpio__construct_with_function(GPIO__PORT_2, 8, GPIO__FUNCITON_0_IO_PIN);
+  gpio__set_as_input(Control_Menu);
+
+  ENCA = gpio__construct_with_function(GPIO__PORT_1, 20, GPIO__FUNCTION_3);
+  ENCB = gpio__construct_with_function(GPIO__PORT_1, 23, GPIO__FUNCTION_3);
+}
+
+uint32_t get_rotary_position(void) { return (LPC_QEI->INXCNT); }
+
+void encoder__turn_on_power(void) { lpc_peripheral__turn_on_power_to(LPC_PERIPHERAL__QEI); }
+void encoder__set_max_position(void) {}
