@@ -101,6 +101,71 @@ static void mp3_player_task(void *parameter) {
     }
   }
 }
+void buttons_interrupt() {
+
+  if (menu_check == 0) {
+    volume_control();
+  }
+  if (menu_check == 1) {
+    bass_control();
+  }
+  if (menu_check == 2) {
+    treble_control();
+  }
+
+  if (interrupt) {
+
+    if (xSemaphoreTakeFromISR(mp3_control_menu, 0)) {
+      if (menu_button) {
+        Enter_control_mode();
+      } else {
+        menu_check = 0;
+        mp3__init_lcd_display(0);
+      }
+    }
+
+    if (xSemaphoreTakeFromISR(mp3_volume_control, 0)) {
+      menu_check = 0;
+    }
+    if (xSemaphoreTakeFromISR(mp3_bass_control, 0)) {
+      menu_check = 1;
+    }
+
+    if (xSemaphoreTakeFromISR(mp3_treble_control, 0)) {
+      menu_check = 2;
+    }
+
+    if (xSemaphoreTakeFromISR(mp3_next, 0)) {
+      next_song();
+    }
+
+    if (xSemaphoreTakeFromISR(mp3_previous, 0)) {
+      previous_song();
+    }
+
+    if (xSemaphoreTakeFromISR(mp3_pause_play, 0)) {
+      if (!currently_playing) {
+        play_song_from_home();
+      } else {
+        if (pause_button) {
+          pause_song();
+        } else {
+          play_song();
+        }
+      }
+    }
+
+    if (xSemaphoreTakeFromISR(song_list_up, 0)) {
+      move_up_list();
+    }
+
+    if (xSemaphoreTakeFromISR(song_list_down, 0)) {
+      move_down_list();
+    }
+    vTaskDelay(300);
+    interrupt = false;
+  }
+}
 
 static void mp3_control_task(void *p) {
   mp3__init();
