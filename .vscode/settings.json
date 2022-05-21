@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "mp3_buttons.h": "c",
+        "song_list.h": "c"
+    }
+}

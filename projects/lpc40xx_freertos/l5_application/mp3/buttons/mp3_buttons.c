@@ -268,4 +268,3 @@ void buttons(void) {
 uint32_t get_rotary_position(void) { return (LPC_QEI->INXCNT); }
 
 void encoder__turn_on_power(void) { lpc_peripheral__turn_on_power_to(LPC_PERIPHERAL__QEI); }
-void encoder__set_max_position(void) {}
