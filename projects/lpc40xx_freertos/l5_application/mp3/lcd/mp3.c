@@ -6,10 +6,11 @@
 
 extern const size_t COL;
 
-char down[8] = {0B00000, 0B00000, 0B00000, 0B10001, 0B11011, 0B01110, 0B00100, 0B00000};
 char play[8] = {0B10000, 0B11000, 0B11100, 0B11110, 0B11100, 0B11000, 0B10000, 0B00000};
 char pause[8] = {0B10010, 0B10010, 0B10010, 0B10010, 0B10010, 0B10010, 0B10010, 0B00000};
 char up[8] = {0B00000, 0B00000, 0B00100, 0B01110, 0B11011, 0B10001, 0B00000, 0B00000};
+char move_down[8] = {0B00100, 0B00100, 0B10101, 0B01110, 0B00100, 0B00000, 0B00000, 0B00000};
+
 
 void command(char send_command) {
   lcd__send_char(0x7C);
@@ -77,10 +78,11 @@ void mp3__init_lcd_display(size_t song_index) {
 
 void menu(void) {
 
-  create_char(1, down);
+  create_char(1, move_down);
   create_char(2, play);
   create_char(3, up);
   create_char(4, pause);
+ 
 }
 
 void mp3_controls_display(void) {
@@ -99,14 +101,7 @@ void mp3_controls_display(void) {
     row++;
   }
 
-  setCursor(2, 3);
-  writeChar(1);
-  lcd__send_char('U');
-  setCursor(9, 3);
-  writeChar(2);
-  writeChar(4);
-  setCursor(17, 3);
-  writeChar(3);
+  lcd__send_row("< V     ^ B      T >", 3);
 }
 
 void song_playing(int song_number) {
@@ -114,6 +109,8 @@ void song_playing(int song_number) {
   lcd__send_row("Playing ", ROW_01);
   lcd__send_row(song_list__get_name_for_item(song_number), ROW_02);
   lcd__send_row("Volume :", ROW_03);
+
+ 
 }
 
 void song_paused(int song_number) {
@@ -122,19 +119,24 @@ void song_paused(int song_number) {
   lcd__send_row(song_list__get_name_for_item(song_number), ROW_02);
   lcd__send_row("Volume :", ROW_03);
 }
+void Welcome_menu(void) {
+  lcd__send_row("     MP3 Player     ", ROW_01);
+  lcd__send_row("  Rotary -> Control ", ROW_02);
+  delay__ms(2000);
+  lcd__send_row("                    ", ROW_02);
+  lcd__send_row("   Blue -> Control  ", ROW_02);
+  delay__ms(2000);
+  lcd__send_row("                    ", ROW_02);
+  lcd__send_row("    Red -> Reset    ", ROW_02);
+  delay__ms(2000);
+  lcd__send_row("                    ", ROW_02);
+  lcd__send_row("   Press Up Button  ", ROW_02);
+  delay__ms(2000);
+}
 
 void mp3__init(void) {
 
-  // sl__refresh_list(); // init function for sl = song list
   lcd__init(115200);
-  // mp3_pins_init();
   lcd__clr_screen();
-  mp3__init_lcd_display(0);
-
-  // mp3_controls_display();
-
-  // while (1) {
-  //   volume_control();
-  //   delay__ms(10);
-  // }
+  Welcome_menu();
 }

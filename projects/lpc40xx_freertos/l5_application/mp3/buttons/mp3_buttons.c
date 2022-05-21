@@ -55,13 +55,17 @@ void pause_song_ISR(void) {
 }
 
 void pause_song(void) {
-  currently_playing = false;
+  currently_playing = true;
+
   vTaskSuspend(mp3_player_handle);
+  song_paused(song_index);
 }
 
 void play_song(void) {
   currently_playing = true;
+
   vTaskResume(mp3_player_handle);
+  song_playing(song_index);
 }
 
 void play_song_from_home(void) {
@@ -140,14 +144,14 @@ void left_as_volume() {
   }
 }
 
-void right_as_bass() {
+void up_as_bass() {
   if (interrupt == false) {
     interrupt = true;
     xSemaphoreGiveFromISR(mp3_bass_control, NULL);
   }
 }
 
-void down_as_treble() {
+void right_as_treble() {
   if (interrupt == false) {
     interrupt = true;
     xSemaphoreGiveFromISR(mp3_treble_control, NULL);
@@ -192,12 +196,15 @@ void move_down_list(void) {
     mp3__init_lcd_display(song_size);
   }
 }
+void do_nothing(void) {}
 
 void Enter_control_mode(void) {
   mp3_controls_display();
+  gpio2__attach_interrupt(2, GPIO_INTR__FALLING_EDGE, do_nothing);
+  gpio2__attach_interrupt(1, GPIO_INTR__FALLING_EDGE, up_as_bass);
   gpio2__attach_interrupt(4, GPIO_INTR__FALLING_EDGE, left_as_volume);
-  gpio2__attach_interrupt(5, GPIO_INTR__FALLING_EDGE, right_as_bass);
-  gpio2__attach_interrupt(6, GPIO_INTR__FALLING_EDGE, down_as_treble);
+  gpio2__attach_interrupt(5, GPIO_INTR__FALLING_EDGE, right_as_treble);
+  gpio2__attach_interrupt(6, GPIO_INTR__FALLING_EDGE, do_nothing);
 }
 void encoder__init() {
   buttons();
@@ -261,4 +268,3 @@ void buttons(void) {
 uint32_t get_rotary_position(void) { return (LPC_QEI->INXCNT); }
 
 void encoder__turn_on_power(void) { lpc_peripheral__turn_on_power_to(LPC_PERIPHERAL__QEI); }
-void encoder__set_max_position(void) {}

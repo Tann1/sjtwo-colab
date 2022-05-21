@@ -70,8 +70,11 @@ void write_register(uint8_t address, uint8_t first_half, uint8_t second_half) {
   }
 }
 
-void send_data(char data) { ssp2__exchange_byte(data); }
-
+void send_data(char data) {
+  gpio__reset(X_DCS);
+  ssp2__exchange_byte(data);
+  gpio__set(X_DCS);
+}
 bool Dreq(void) {
   bool Dreq_status = false;
   if (gpio__get(DREQ)) {
@@ -80,6 +83,3 @@ bool Dreq(void) {
   return Dreq_status;
 }
 
-void cs_data(void) { gpio__reset(X_DCS); }
-
-void ds_data(void) { gpio__set(X_DCS); }
